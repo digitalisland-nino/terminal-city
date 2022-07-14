@@ -74,7 +74,7 @@ fn main() {
                 resize_term(0, 0);
             }
             Some(Input::KeyDC) => break,
-            Some(input) => {
+            Some(_input) => {
                 //window.addstr(&format!("{:?}", input));
             }
             None => (),
