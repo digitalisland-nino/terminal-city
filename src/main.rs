@@ -1,12 +1,17 @@
 extern crate pancurses;
+mod board;
 mod entities;
 mod logo;
 
+use board::{board::*, grid::TILE_SIZE};
+
 use pancurses::{
-    cbreak, endwin, getmouse, initscr, mousemask, noecho, resize_term, Input, Window, ACS_HLINE,
+    cbreak, endwin, getmouse, initscr, mousemask, newwin, noecho, resize_term, Input, Window,
     ALL_MOUSE_EVENTS, REPORT_MOUSE_POSITION,
 };
 use std::convert::TryInto;
+
+const HEADER_HEIGHT: i32 = 14;
 
 fn draw_logo(window: &mut Window) {
     window.mvprintw(1, 63, logo::logo_line_1());
@@ -33,8 +38,46 @@ fn draw_instructions(window: &mut Window) {
     window.mvprintw(13, 50, separator);
 }
 
+fn draw_board(window: &mut Window, board: &Board) -> Window {
+    let tile_y = TILE_SIZE[0];
+    let tile_x = TILE_SIZE[1];
+
+    let board_height = 10 * tile_y;
+    let board_width = 10 * tile_x;
+
+    let max_y = window.get_max_y();
+    let max_x = window.get_max_x();
+
+    let center_y = ((max_y + HEADER_HEIGHT) / 2) - board_height / 2;
+    let center_x = (max_x / 2) - board_width / 2;
+
+    let board_window = newwin(board_height, board_width, center_y, center_x);
+
+    board_window.draw_box(0, 0);
+    board_window.refresh();
+
+    //let new_tile = board_window.subwin(tile_y, tile_x, 0, 0);
+    //let tile_window = new_tile.expect("Failed to derive subwindow for tile.");
+
+    //tile_window.draw_box(0, 0);
+    //tile_window.refresh();
+    board_window.touch();
+
+    for tile in &board.row_tiles {}
+
+    board_window
+}
+
 fn main() {
-    let mut window = initscr();
+    let mut window: Window = initscr();
+
+    let width = window.get_max_y();
+    let height = window.get_max_x();
+
+    let board = Board::new(Size {
+        y: width,
+        x: height,
+    });
 
     noecho();
     cbreak();
@@ -43,16 +86,31 @@ fn main() {
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, Some(&mut 0));
 
     window.refresh();
-    window.draw_box(0, 0);
+    //window.draw_box(0, 0);
 
     draw_logo(&mut window);
     draw_instructions(&mut window);
+    let board_window = draw_board(&mut window, &board);
+
+    let board_dimensions = (
+        board_window.get_beg_y(),
+        board_window.get_beg_x() + 3,
+        (board_window.get_max_y() as f64 * 1.4) as i32 - 2,
+        (board_window.get_max_x() as f64 * 1.5) as i32 - 4,
+    );
+    println!("{:?}", board_dimensions);
+    window.mvprintw(18, 43, "*");
+    window.mvprintw(54, 116, "*");
 
     loop {
         match window.getch() {
             Some(Input::KeyMouse) => {
                 if let Ok(mouse_event) = getmouse() {
-                    if mouse_event.y > 14 {
+                    let inside_board = mouse_event.y > board_dimensions.0
+                        && mouse_event.x > board_dimensions.1
+                        && mouse_event.y < board_dimensions.2
+                        && mouse_event.x < board_dimensions.3;
+                    if inside_board {
                         let house_ascii_art_chimney = entities::house::print_house_chimney();
                         let house_ascii_art_top = entities::house::print_house_top();
                         let house_ascii_art_middle = entities::house::print_house_middle();
