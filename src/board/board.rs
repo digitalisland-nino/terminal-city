@@ -19,12 +19,12 @@ impl Board {
         let mut row_tiles = Vec::new();
         let mut column_tiles = Vec::new();
 
-        for _column in 0..size.y {
-            column_tiles.push(Tile::new(TILE_SIZE[0], TILE_SIZE[1]))
+        for column in 0..((size.y as f64 / 6.5) as i32) {
+            column_tiles.push(Tile::new(TILE_SIZE[0], TILE_SIZE[1], 0, column))
         }
 
-        for _row in 0..size.x {
-            row_tiles.push(Tile::new(TILE_SIZE[0], TILE_SIZE[1]))
+        for row in 0..(size.x / 17) {
+            row_tiles.push(Tile::new(TILE_SIZE[0], TILE_SIZE[1], row, 0))
         }
 
         Board {
