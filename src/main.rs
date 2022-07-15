@@ -3,7 +3,10 @@ mod board;
 mod entities;
 mod logo;
 
-use board::{board::*, grid::TILE_SIZE};
+use board::{
+    board::*,
+    grid::{Tile, SUB_TILE_SIZE, TILE_SIZE},
+};
 
 use pancurses::{
     cbreak, endwin, getmouse, initscr, mousemask, newwin, noecho, resize_term, Input, Window,
@@ -38,7 +41,65 @@ fn draw_instructions(window: &mut Window) {
     window.mvprintw(13, 50, separator);
 }
 
-fn draw_board(window: &mut Window, board: &Board) -> Window {
+fn store_tile(tile_vector: &mut Vec<Tile>, new_tile: Tile) {
+    tile_vector.push(new_tile);
+}
+
+fn draw_sub_tile(window: &mut Window, y: i32, x: i32, mut all_sub_tiles: &mut Vec<Tile>) {
+    let initialized_sub_tile = window.derwin(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], y, x);
+
+    let sub_tile = match initialized_sub_tile {
+        Ok(sub_tile_window) => sub_tile_window,
+        Err(error) => panic!("Failed to create sub_tile subwindow: {:?}", error),
+    };
+
+    sub_tile.touch();
+    //sub_tile.draw_box(0, 0);
+    sub_tile.refresh();
+}
+
+fn draw_tile(
+    window: &mut Window,
+    y: i32,
+    x: i32,
+    mut all_tiles: &mut Vec<Tile>,
+    mut all_sub_tiles: &mut Vec<Tile>,
+) {
+    let initialized_tile = window.derwin(TILE_SIZE[0], TILE_SIZE[1], y + 1, x + 2);
+
+    let mut tile = match initialized_tile {
+        Ok(tile_window) => tile_window,
+        Err(error) => panic!("Failed to create tile subwindow: {:?}", error),
+    };
+
+    tile.touch();
+    tile.draw_box(0, 0);
+    tile.refresh();
+    let mut sub_y = 0;
+    let mut sub_x = 0;
+
+    for sub_row in 0..SUB_TILE_SIZE[0] {
+        for sub_column in 0..SUB_TILE_SIZE[0] {
+            let x = sub_y;
+            let y = sub_x;
+            store_tile(
+                &mut all_sub_tiles,
+                Tile::new(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], sub_row, sub_column),
+            );
+            draw_sub_tile(&mut tile, y, x, &mut all_sub_tiles);
+            sub_x += SUB_TILE_SIZE[1] - 2;
+        }
+        sub_x = 0;
+        sub_y += SUB_TILE_SIZE[0];
+    }
+}
+
+fn draw_board(
+    window: &mut Window,
+    board: Board,
+    mut all_tiles: &mut Vec<Tile>,
+    mut all_sub_tiles: &mut Vec<Tile>,
+) -> Window {
     let tile_y = TILE_SIZE[0];
     let tile_x = TILE_SIZE[1];
 
@@ -51,19 +112,29 @@ fn draw_board(window: &mut Window, board: &Board) -> Window {
     let center_y = ((max_y + HEADER_HEIGHT) / 2) - board_height / 2;
     let center_x = (max_x / 2) - board_width / 2;
 
-    let board_window = newwin(board_height, board_width, center_y, center_x);
+    let mut board_window = newwin(board_height, board_width, center_y, center_x);
 
     board_window.draw_box(0, 0);
     board_window.refresh();
 
-    //let new_tile = board_window.subwin(tile_y, tile_x, 0, 0);
-    //let tile_window = new_tile.expect("Failed to derive subwindow for tile.");
+    let mut row_position = 0;
+    let mut column_position = 0;
 
-    //tile_window.draw_box(0, 0);
-    //tile_window.refresh();
+    for _row in &board.row_tiles {
+        for _column in &board.column_tiles {
+            let x = column_position;
+            let y = row_position;
+            store_tile(
+                &mut all_tiles,
+                Tile::new(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], y, x),
+            );
+            draw_tile(&mut board_window, y, x, &mut all_tiles, &mut all_sub_tiles);
+            column_position += TILE_SIZE[1];
+        }
+        column_position = 0;
+        row_position += TILE_SIZE[0];
+    }
     board_window.touch();
-
-    for tile in &board.row_tiles {}
 
     board_window
 }
@@ -79,6 +150,9 @@ fn main() {
         x: height,
     });
 
+    let mut all_tiles: Vec<Tile> = Vec::new();
+    let mut all_sub_tiles: Vec<Tile> = Vec::new();
+
     noecho();
     cbreak();
 
@@ -90,7 +164,7 @@ fn main() {
 
     draw_logo(&mut window);
     draw_instructions(&mut window);
-    let board_window = draw_board(&mut window, &board);
+    let board_window = draw_board(&mut window, board, &mut all_tiles, &mut all_sub_tiles);
 
     let board_dimensions = (
         board_window.get_beg_y(),
@@ -98,7 +172,6 @@ fn main() {
         (board_window.get_max_y() as f64 * 1.4) as i32 - 2,
         (board_window.get_max_x() as f64 * 1.5) as i32 - 4,
     );
-    println!("{:?}", board_dimensions);
     window.mvprintw(18, 43, "*");
     window.mvprintw(54, 116, "*");
 
@@ -140,4 +213,19 @@ fn main() {
     }
 
     endwin();
+
+    let mut tile_count = 0;
+    for _tile in all_tiles {
+        tile_count += 1;
+    }
+
+    let mut sub_tile_count = 0;
+    for _tile in all_sub_tiles {
+        sub_tile_count += 1;
+    }
+
+    println!(
+        "Tile count: {:?}, Subtile count: {:?}",
+        tile_count, sub_tile_count
+    );
 }
