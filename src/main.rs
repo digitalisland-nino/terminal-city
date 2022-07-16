@@ -45,7 +45,7 @@ fn store_tile(tile_vector: &mut Vec<Tile>, new_tile: Tile) {
     tile_vector.push(new_tile);
 }
 
-fn draw_sub_tile(window: &mut Window, y: i32, x: i32, mut all_sub_tiles: &mut Vec<Tile>) {
+fn draw_sub_tile(window: &mut Window, y: i32, x: i32) {
     let initialized_sub_tile = window.derwin(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], y, x);
 
     let sub_tile = match initialized_sub_tile {
@@ -58,13 +58,7 @@ fn draw_sub_tile(window: &mut Window, y: i32, x: i32, mut all_sub_tiles: &mut Ve
     sub_tile.refresh();
 }
 
-fn draw_tile(
-    window: &mut Window,
-    y: i32,
-    x: i32,
-    mut all_tiles: &mut Vec<Tile>,
-    mut all_sub_tiles: &mut Vec<Tile>,
-) {
+fn draw_tile(window: &mut Window, y: i32, x: i32, mut all_sub_tiles: &mut Vec<Tile>) {
     let initialized_tile = window.derwin(TILE_SIZE[0], TILE_SIZE[1], y + 1, x + 2);
 
     let mut tile = match initialized_tile {
@@ -86,7 +80,7 @@ fn draw_tile(
                 &mut all_sub_tiles,
                 Tile::new(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], sub_row, sub_column),
             );
-            draw_sub_tile(&mut tile, y, x, &mut all_sub_tiles);
+            draw_sub_tile(&mut tile, y, x);
             sub_x += SUB_TILE_SIZE[1] - 2;
         }
         sub_x = 0;
@@ -128,7 +122,7 @@ fn draw_board(
                 &mut all_tiles,
                 Tile::new(SUB_TILE_SIZE[0], SUB_TILE_SIZE[1], y, x),
             );
-            draw_tile(&mut board_window, y, x, &mut all_tiles, &mut all_sub_tiles);
+            draw_tile(&mut board_window, y, x, &mut all_sub_tiles);
             column_position += TILE_SIZE[1];
         }
         column_position = 0;
